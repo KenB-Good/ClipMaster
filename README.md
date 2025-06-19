@@ -2,6 +2,7 @@
 
 # 🎬 ClipMaster - AI-Powered Video Clipping Platform
 
+[![Status](https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge)](https://github.com/KenB-Good/ClipMaster)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org/)
@@ -53,13 +54,20 @@
 ## 📸 Screenshots & Demo
 
 ### 🖥️ Modern Dashboard Interface
-![ClipMaster Dashboard](https://miro.medium.com/max/1400/1*gEVJ1-hOkpt2dzIbVXDNuQ.jpeg)
+![ClipMaster Dashboard](docs/assets/dashboard.png)
+*Main dashboard showing video upload interface with drag-and-drop functionality and processing configuration options*
 
-### 🎬 AI Highlight Detection
-![Highlight Detection](https://lh7-us.googleusercontent.com/c0Y_9vCPlaHCm8Nwrf8IwpQHYzeZyJKk5oH-H13VJMC7tRWouHvKKBeBhejFX2f-CkRW4_ZQBL8oynUHVp41XYq-p0Ez0ltEs8homDanov5uIR-VR-qZoBpKBfCZqRbjKct7enrwJbLpt7klARaD08E)
+### 📊 Real-Time Processing Queue
+![Processing Queue](docs/assets/processing-queue.png)
+*Live dashboard displaying processing statistics, active queue, and recent activity with real-time progress tracking*
 
-### 📊 Real-Time Processing
-![Processing Queue](https://static.vecteezy.com/system/resources/previews/020/101/670/large_2x/real-time-data-blue-gradient-concept-icon-technology-development-information-processing-trend-abstract-idea-thin-line-illustration-isolated-outline-drawing-vector.jpg)
+### 📁 File Manager & Video Library
+![File Manager](docs/assets/file-manager.png)
+*Comprehensive file management system showing processed videos with thumbnails, metadata, and clip statistics*
+
+### 🎬 Video Upload Interface
+![Upload Interface](docs/assets/upload.png)
+*Intuitive upload interface with drag-and-drop support, format validation, and processing configuration*
 
 ## 🚀 Quick Start Installation
 
@@ -732,14 +740,14 @@ Join our vibrant community of creators and developers:
 
 ## 🎯 Roadmap & Future Features
 
-### 🚀 Coming Soon (Q3 2024)
+### 🚀 Coming Soon (Q3 2025)
 - [ ] **🎥 Real-Time Streaming** - Live processing during streams
 - [ ] **🧠 Advanced AI Models** - GPT-4 Vision integration
 - [ ] **🌍 Multi-Language Support** - 50+ language interface
 - [ ] **📱 Mobile Application** - iOS and Android apps
 - [ ] **☁️ Cloud Deployment** - One-click cloud hosting
 
-### 🔮 Future Vision (2024-2025)
+### 🔮 Future Vision (2025-2026)
 - [ ] **🎨 AI Video Generation** - Create clips from text prompts
 - [ ] **📊 Advanced Analytics** - Detailed performance insights
 - [ ] **🔗 Platform Integrations** - YouTube, TikTok, Instagram APIs
