@@ -1,0 +1,236 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/clipmaster/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Video {
+  id                String        @id @default(cuid())
+  filename          String
+  originalFilename  String
+  filePath          String
+  fileSize          BigInt
+  duration          Float?
+  format            String
+  resolution        String?
+  uploadedAt        DateTime      @default(now())
+  processedAt       DateTime?
+  status            VideoStatus   @default(UPLOADED)
+  source            VideoSource   @default(UPLOAD)
+  
+  // Twitch specific fields
+  twitchStreamId    String?
+  twitchTitle       String?
+  twitchGame        String?
+  
+  // Processing results
+  transcription     String?       @db.Text
+  highlights        Highlight[]
+  clips             Clip[]
+  processingTasks   ProcessingTask[]
+  
+  @@map("videos")
+}
+
+model Highlight {
+  id            String      @id @default(cuid())
+  videoId       String
+  video         Video       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  startTime     Float
+  endTime       Float
+  confidence    Float
+  type          HighlightType
+  description   String?
+  metadata      Json?
+  
+  createdAt     DateTime    @default(now())
+  
+  // Generated clips from this highlight
+  clips         Clip[]
+  
+  @@map("highlights")
+}
+
+model Clip {
+  id            String      @id @default(cuid())
+  videoId       String
+  video         Video       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  highlightId   String?
+  highlight     Highlight?  @relation(fields: [highlightId], references: [id], onDelete: SetNull)
+  
+  filename      String
+  filePath      String
+  fileSize      BigInt
+  duration      Float
+  startTime     Float
+  endTime       Float
+  format        ClipFormat  @default(HORIZONTAL)
+  
+  // Subtitle and overlay settings
+  hasSubtitles  Boolean     @default(false)
+  hasOverlay    Boolean     @default(false)
+  overlayConfig Json?
+  
+  createdAt     DateTime    @default(now())
+  downloadedAt  DateTime?
+  
+  @@map("clips")
+}
+
+model ProcessingTask {
+  id            String      @id @default(cuid())
+  videoId       String?
+  video         Video?      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  type          TaskType
+  status        TaskStatus  @default(PENDING)
+  progress      Float       @default(0)
+  
+  // Task configuration
+  config        Json?
+  customPrompt  String?     @db.Text
+  
+  // Results and errors
+  result        Json?
+  error         String?     @db.Text
+  
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime    @default(now())
+  
+  @@map("processing_tasks")
+}
+
+model TwitchIntegration {
+  id            String      @id @default(cuid())
+  accessToken   String
+  refreshToken  String
+  username      String      @unique
+  userId        String      @unique
+  
+  // Stream monitoring settings
+  isMonitoring  Boolean     @default(false)
+  autoCapture   Boolean     @default(false)
+  chatMonitoring Boolean    @default(true)
+  
+  // Last stream info
+  lastStreamId  String?
+  lastStreamTitle String?
+  lastStreamGame  String?
+  
+  connectedAt   DateTime    @default(now())
+  lastUsedAt    DateTime    @default(now())
+  
+  @@map("twitch_integrations")
+}
+
+model CustomPrompt {
+  id            String      @id @default(cuid())
+  name          String
+  description   String?
+  prompt        String      @db.Text
+  category      PromptCategory @default(GENERAL)
+  
+  // Usage tracking
+  useCount      Int         @default(0)
+  lastUsedAt    DateTime?
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@map("custom_prompts")
+}
+
+model SystemConfig {
+  id            String      @id @default(cuid())
+  key           String      @unique
+  value         String      @db.Text
+  type          ConfigType  @default(STRING)
+  description   String?
+  
+  updatedAt     DateTime    @updatedAt
+  
+  @@map("system_configs")
+}
+
+model StorageStats {
+  id            String      @id @default(cuid())
+  totalSpace    BigInt
+  usedSpace     BigInt
+  availableSpace BigInt
+  videoCount    Int
+  clipCount     Int
+  
+  recordedAt    DateTime    @default(now())
+  
+  @@map("storage_stats")
+}
+
+// Enums
+enum VideoStatus {
+  UPLOADED
+  PROCESSING
+  PROCESSED
+  ERROR
+  ARCHIVED
+}
+
+enum VideoSource {
+  UPLOAD
+  TWITCH_STREAM
+  TWITCH_VOD
+}
+
+enum HighlightType {
+  GAMEPLAY_MOMENT
+  EMOTIONAL_REACTION
+  CHAT_SPIKE
+  GAMEPLAY_MECHANIC
+  STRATEGIC_EXPLANATION
+  CONTENT_PEAK
+  CLIP_THAT_MOMENT
+  CUSTOM_PROMPT
+}
+
+enum ClipFormat {
+  HORIZONTAL
+  VERTICAL
+  SQUARE
+}
+
+enum TaskType {
+  TRANSCRIPTION
+  HIGHLIGHT_DETECTION
+  CLIP_GENERATION
+  SUBTITLE_GENERATION
+  TWITCH_CAPTURE
+}
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum PromptCategory {
+  GENERAL
+  GAMING
+  REACTIONS
+  EDUCATIONAL
+  ENTERTAINMENT
+}
+
+enum ConfigType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
