@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Menu, Zap, Settings, Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import KofiPanel from '@/components/kofi-panel';
 
 interface HeaderProps {
   activeTab: string;
@@ -54,6 +55,13 @@ const Header = ({ activeTab, toggleSidebar }: HeaderProps) => {
         </div>
 
         <div className="flex items-center gap-3">
+          <KofiPanel 
+            username="weirdducksai"
+            title="Support ClipMaster Development"
+            description="Help us continue developing amazing AI-powered video tools for creators like you!"
+            className="mr-2"
+          />
+          
           <Button
             variant="ghost"
             size="sm"
