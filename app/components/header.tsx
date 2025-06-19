@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { motion } from 'framer-motion';
@@ -56,7 +57,7 @@ const Header = ({ activeTab, toggleSidebar }: HeaderProps) => {
 
         <div className="flex items-center gap-3">
           <KofiPanel 
-            username="weirdducksai"
+            username="epickenbee"
             title="Support ClipMaster Development"
             description="Help us continue developing amazing AI-powered video tools for creators like you!"
             className="mr-2"
@@ -100,3 +101,4 @@ const Header = ({ activeTab, toggleSidebar }: HeaderProps) => {
 };
 
 export default Header;
+

@@ -1,4 +1,5 @@
 
+
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
@@ -35,7 +36,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'ClipMaster - AI-Powered Video Clipping Platform',
     description: 'Transform your content creation with intelligent AI-powered video clipping and highlight detection.',
-    creator: '@WeirdDucksAI',
+    creator: '@weirdduckstudio',
     images: ['/og-image.png'],
   },
 }
@@ -59,7 +60,7 @@ export default function RootLayout({
           </div>
           <Toaster />
           <KofiWidget 
-            username="weirdducksai"
+            username="epickenbee"
             backgroundColor="#FF5E5B"
             textColor="#FFFFFF"
             ctaText="💖 Support ClipMaster"
@@ -70,3 +71,4 @@ export default function RootLayout({
     </html>
   )
 }
+

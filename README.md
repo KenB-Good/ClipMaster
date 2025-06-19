@@ -1,4 +1,5 @@
 
+
 # 🎬 ClipMaster - AI-Powered Video Clipping Platform
 
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -6,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Us-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/weirdducksai)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Us-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/epickenbee)
 
 > **The Ultimate AI-Powered Video Clipping System** - Transform your content creation workflow with intelligent highlight detection, automated video editing, and real-time stream monitoring. Perfect for content creators, streamers, and video professionals.
 
@@ -693,7 +694,7 @@ Have an idea? We'd love to hear it! Please include:
 
 ClipMaster is developed and maintained by **WeirdDucks Studio**. If you find this project helpful, consider supporting our work:
 
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Development-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/weirdducksai)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Development-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/epickenbee)
 
 Your support helps us:
 - 🚀 **Add New Features** - Implement community-requested functionality
@@ -715,14 +716,19 @@ This project is licensed under the **MIT License** with additional terms - see t
 - **📚 Documentation** - [Complete Documentation](docs/)
 - **🐛 Bug Reports** - [GitHub Issues](https://github.com/KenB-Good/ClipMaster/issues)
 - **💬 Discussions** - [GitHub Discussions](https://github.com/KenB-Good/ClipMaster/discussions)
-- **📧 Email Support** - support@weirdducksai.com
 
 ### 🌟 Community
 
-- **🎮 Discord Server** - [Join our community](https://discord.gg/weirdducksai)
-- **🐦 Twitter** - [@WeirdDucksAI](https://twitter.com/WeirdDucksAI)
-- **📺 Twitch** - [EpicKenBee](https://twitch.tv/EpicKenBee)
-- **📱 Reddit** - [r/ClipMaster](https://reddit.com/r/ClipMaster)
+Join our vibrant community of creators and developers:
+
+- **🌐 Website** - [WeirdDucks Studio](https://weirdducks.studio)
+- **🎮 Discord Server** - [Join our community](https://discord.gg/qb8eAYsJRH)
+- **🐦 Twitter** - [@weirdduckstudio](https://x.com/weirdduckstudio)
+- **📺 Twitch** - [EpicKenBee](https://www.twitch.tv/epickenbee)
+- **📱 Personal Site** - [EpicKenBee.me](https://epickenbee.me/)
+- **💖 Ko-fi** - [Support Development](https://ko-fi.com/epickenbee)
+- **📺 YouTube** - [@weirdducksstudio](https://youtube.com/@weirdducksstudio) & [@epickenbee](https://youtube.com/@epickenbee)
+- **💻 GitHub** - [KenB-Good](https://github.com/KenB-Good)
 
 ## 🎯 Roadmap & Future Features
 
@@ -747,10 +753,11 @@ This project is licensed under the **MIT License** with additional terms - see t
 
 **🎬 ClipMaster - Transform Your Content with AI! ✨**
 
-*Developed with ❤️ by [WeirdDucks Studio](https://weirdducksai.com)*
+*Developed with ❤️ by [WeirdDucks Studio](https://weirdducks.studio)*
 
 [![GitHub Stars](https://img.shields.io/github/stars/KenB-Good/ClipMaster?style=social)](https://github.com/KenB-Good/ClipMaster/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/KenB-Good/ClipMaster?style=social)](https://github.com/KenB-Good/ClipMaster/network/members)
 [![GitHub Issues](https://img.shields.io/github/issues/KenB-Good/ClipMaster?style=social)](https://github.com/KenB-Good/ClipMaster/issues)
 
 </div>
+

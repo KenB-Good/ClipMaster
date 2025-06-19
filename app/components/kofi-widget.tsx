@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -12,7 +13,7 @@ interface KofiWidgetProps {
 }
 
 export default function KofiWidget({
-  username = 'weirdducksai',
+  username = 'epickenbee',
   backgroundColor = '#FF5E5B',
   textColor = '#FFFFFF',
   ctaText = 'Support Us',
@@ -70,3 +71,4 @@ declare global {
     }
   }
 }
+

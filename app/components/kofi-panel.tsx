@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { useState } from 'react'
@@ -21,7 +22,7 @@ interface KofiPanelProps {
 }
 
 export default function KofiPanel({
-  username = 'weirdducksai',
+  username = 'epickenbee',
   title = 'Support ClipMaster Development',
   description = 'Help us continue developing amazing AI-powered video tools!',
   className = ''
@@ -83,3 +84,4 @@ export default function KofiPanel({
     </Dialog>
   )
 }
+
