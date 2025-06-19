@@ -1,0 +1,122 @@
+
+version: '3.8'
+
+# Development Docker Compose Configuration
+# Use this for development with hot reloading and debugging
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: clipmaster_postgres_dev
+    environment:
+      POSTGRES_DB: clipmaster_dev
+      POSTGRES_USER: clipmaster
+      POSTGRES_PASSWORD: clipmaster_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - clipmaster_dev_network
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: clipmaster_redis_dev
+    ports:
+      - "6379:6379"
+    networks:
+      - clipmaster_dev_network
+
+  # FastAPI Backend (Development)
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: clipmaster_api_dev
+    environment:
+      - DATABASE_URL=postgresql://clipmaster:clipmaster_password@postgres:5432/clipmaster_dev
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./storage:/app/storage
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - clipmaster_dev_network
+    command: ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  # Celery Worker (Development)
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: clipmaster_worker_dev
+    environment:
+      - DATABASE_URL=postgresql://clipmaster:clipmaster_password@postgres:5432/clipmaster_dev
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./storage:/app/storage
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - clipmaster_dev_network
+    command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=debug", "--queues=video_processing,twitch_monitoring,maintenance"]
+
+  # Flower (Celery monitoring)
+  flower:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: clipmaster_flower_dev
+    command: celery -A app.tasks.celery_app flower --port=5555
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    networks:
+      - clipmaster_dev_network
+
+  # NextJS Frontend (Development)
+  frontend:
+    build:
+      context: ./app
+      dockerfile: ../docker/Dockerfile.frontend
+      target: development
+    container_name: clipmaster_frontend_dev
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - clipmaster_dev_network
+    command: ["yarn", "dev"]
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  clipmaster_dev_network:
+    driver: bridge

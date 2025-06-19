@@ -1,0 +1,192 @@
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: clipmaster_postgres
+    environment:
+      POSTGRES_DB: clipmaster
+      POSTGRES_USER: clipmaster
+      POSTGRES_PASSWORD: clipmaster_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - clipmaster_network
+    restart: unless-stopped
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: clipmaster_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - clipmaster_network
+    restart: unless-stopped
+
+  # FastAPI Backend
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: clipmaster_api
+    environment:
+      - DATABASE_URL=postgresql://clipmaster:clipmaster_password@postgres:5432/clipmaster
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./storage:/app/storage
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - clipmaster_network
+    restart: unless-stopped
+
+  # Celery Worker (CPU tasks)
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: clipmaster_worker
+    environment:
+      - DATABASE_URL=postgresql://clipmaster:clipmaster_password@postgres:5432/clipmaster
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./storage:/app/storage
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - clipmaster_network
+    restart: unless-stopped
+
+  # Celery Worker (AI/GPU tasks)
+  ai_worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ai_worker
+    container_name: clipmaster_ai_worker
+    environment:
+      - DATABASE_URL=postgresql://clipmaster:clipmaster_password@postgres:5432/clipmaster
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - ENABLE_GPU=true
+      - WHISPER_DEVICE=cuda
+    volumes:
+      - ./storage:/app/storage
+      - ./backend:/app
+      - ./models:/app/models  # For caching AI models
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - clipmaster_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Celery Beat (Scheduler)
+  beat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: clipmaster_beat
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://clipmaster:clipmaster_password@postgres:5432/clipmaster
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./storage:/app/storage
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - clipmaster_network
+    restart: unless-stopped
+
+  # Flower (Celery monitoring)
+  flower:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.worker
+    container_name: clipmaster_flower
+    command: celery -A app.tasks.celery_app flower --port=5555
+    environment:
+      - DATABASE_URL=postgresql://clipmaster:clipmaster_password@postgres:5432/clipmaster
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    networks:
+      - clipmaster_network
+    restart: unless-stopped
+
+  # NextJS Frontend
+  frontend:
+    build:
+      context: ./app
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: clipmaster_frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    networks:
+      - clipmaster_network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: clipmaster_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/ssl:/etc/nginx/ssl
+      - ./storage/uploads:/var/www/uploads
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - clipmaster_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  clipmaster_network:
+    driver: bridge

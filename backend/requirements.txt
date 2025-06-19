@@ -1,0 +1,56 @@
+
+# Core FastAPI dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database
+asyncpg==0.29.0
+databases[postgresql]==0.8.0
+alembic==1.13.1
+
+# Redis and task queue
+redis==5.0.1
+celery==5.3.4
+flower==2.0.1
+
+# AI and ML
+openai-whisper==20231117
+torch==2.1.1
+torchaudio==2.1.1
+transformers==4.36.2
+moviepy==1.0.3
+opencv-python==4.8.1.78
+numpy==1.24.4
+librosa==0.10.1
+scipy==1.11.4
+
+# Video processing
+ffmpeg-python==0.2.0
+
+# Twitch integration
+twitchio==2.9.1
+aiohttp==3.9.1
+
+# File handling
+aiofiles==23.2.1
+python-magic==0.4.27
+
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.0
+
+# Monitoring and logging
+structlog==23.2.0
+sentry-sdk==1.39.2
+
+# Background tasks
+dramatiq[redis]==1.15.0
+
+# Utilities
+httpx==0.25.2
+pillow==10.1.0
+pydub==0.25.1

@@ -1,71 +1,55 @@
+# Build artifacts
+app/.build/
+app/.next/
+*.tsbuildinfo
+
+# Logs
+.logs/
+*.log
+
 # Dependencies
 node_modules/
-.pnp
-.pnp.js
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Testing
-coverage/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Next.js
-.next/
-out/
-build/
-.build/
-
-# Production
-build/
-dist/
-
-# Misc
+# OS
 .DS_Store
-*.tgz
-*.tar.gz
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Local env files
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Vercel
-.vercel
+# Temporary files
+*.tmp
+*.temp
+.deploy/
+files_formatted.json
+files_to_push.json
+prepare_files.py
 
-# Typescript
-*.tsbuildinfo
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-Thumbs.db
-
-# Logs
-logs/
-*.log
-
-# Runtime data
-pids/
-*.pid
-*.seed
-*.pid.lock
-
-# Yarn
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-
-# Cache
-.cache/
-.parcel-cache/
-
-# Temporary folders
-tmp/
-temp/
+# Abacus internal
+.abacus.donotdelete
