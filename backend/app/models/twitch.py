@@ -1,10 +1,12 @@
-
 """
 Twitch integration models
 """
-from typing import Optional
-from pydantic import BaseModel
+
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
 
 class TwitchIntegrationBase(BaseModel):
     username: str
@@ -13,9 +15,11 @@ class TwitchIntegrationBase(BaseModel):
     auto_capture: bool = False
     chat_monitoring: bool = True
 
+
 class TwitchIntegrationCreate(TwitchIntegrationBase):
     access_token: str
     refresh_token: str
+
 
 class TwitchIntegrationUpdate(BaseModel):
     is_monitoring: Optional[bool] = None
@@ -26,8 +30,11 @@ class TwitchIntegrationUpdate(BaseModel):
     last_stream_game: Optional[str] = None
     last_used_at: Optional[datetime] = None
 
+
 class TwitchIntegration(TwitchIntegrationBase):
     id: str
+    access_token: Optional[str] = Field(default=None, exclude=True)
+    refresh_token: Optional[str] = Field(default=None, exclude=True)
     last_stream_id: Optional[str] = None
     last_stream_title: Optional[str] = None
     last_stream_game: Optional[str] = None
