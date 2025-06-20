@@ -1,350 +1,412 @@
-
 """
-Twitch chat monitoring for highlight detection
+Twitch chat monitoring for ClipMaster
+Analyzes chat activity to detect excitement and highlight moments
+SECURITY: Fixed import issues and added missing imports
 """
-import asyncio
-import json
-import websockets
-from typing import Dict, Any, List, Callable, Optional
-from datetime import datetime
 import logging
+import asyncio
+import re
+from typing import Dict, List, Any, Optional
+from datetime import datetime, timedelta  # SECURITY FIX: Added missing timedelta import
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
+
+import twitchio
+from twitchio.ext import commands
 
 logger = logging.getLogger(__name__)
 
-class TwitchChatMonitor:
-    def __init__(self, channel: str, on_message_callback: Optional[Callable] = None):
-        self.channel = channel.lower()
-        self.on_message_callback = on_message_callback
-        self.websocket = None
-        self.is_connected = False
+
+@dataclass
+class ChatStats:
+    """Chat statistics for excitement analysis"""
+
+    total_messages: int = 0
+    unique_users: set = field(default_factory=set)
+    messages_per_minute: deque = field(default_factory=lambda: deque(maxlen=60))
+    excitement_indicators: Dict[str, int] = field(default_factory=dict)
+    recent_messages: deque = field(default_factory=lambda: deque(maxlen=100))
+    start_time: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class ExcitementMoment:
+    """Represents a moment of high excitement in chat"""
+
+    timestamp: datetime
+    score: float
+    duration: int
+    message_count: int
+    unique_users: int
+    indicators: List[str]
+    sample_messages: List[str]
+
+
+class TwitchChatMonitor(commands.Bot):
+    """
+    Twitch chat monitor that analyzes chat activity for excitement detection
+    """
+
+    def __init__(self, channel_name: str, oauth_token: str):
+        super().__init__(
+            token=oauth_token, prefix="!", initial_channels=[channel_name]
+        )
+
+        self.channel_name = channel_name
+        self.stats = ChatStats()
+        self.excitement_moments: List[ExcitementMoment] = []
         self.is_monitoring = False
-        
-        # Chat analysis
-        self.message_buffer = []
-        self.excitement_keywords = [
-            'clip', 'poggers', 'pog', 'omg', 'wow', 'insane', 'crazy',
-            'unbelievable', 'sick', 'nuts', 'epic', 'legendary',
-            'wtf', 'no way', 'holy', 'amazing', 'incredible', 'gg',
-            'ez', 'rip', 'kappa', 'lul', 'pepehands', 'monkas'
-        ]
-        
-        # Statistics
-        self.stats = {
-            'total_messages': 0,
-            'unique_users': set(),
-            'excitement_moments': [],
-            'message_rate': 0,
-            'start_time': None
+
+        # Excitement indicators and their weights
+        self.excitement_patterns = {
+            # Emotes and reactions
+            r"[!]{2,}": 2.0,  # Multiple exclamation marks
+            r"[?]{2,}": 1.5,  # Multiple question marks
+            r"POGGERS?|POG|KEKW|LUL|OMEGALUL": 3.0,  # Popular emotes
+            r"WOW|AMAZING|INSANE|CRAZY|UNBELIEVABLE": 2.5,  # Excitement words
+            r"CLUTCH|GODLIKE|LEGENDARY|EPIC": 3.0,  # Gaming excitement
+            r"NO WAY|WHAT|HOW|IMPOSSIBLE": 2.0,  # Disbelief
+            r"[A-Z]{3,}": 1.5,  # All caps words
+            # Spam patterns (can indicate excitement)
+            r"(.)\1{3,}": 1.0,  # Character repetition (aaaa, !!!!)
+            r"(\w+)\s+\1": 1.5,  # Word repetition
         }
-    
-    async def connect(self):
-        """Connect to Twitch IRC chat"""
-        try:
-            self.websocket = await websockets.connect("wss://irc-ws.chat.twitch.tv:443")
-            self.is_connected = True
-            
-            # Send authentication (anonymous)
-            await self.websocket.send("CAP REQ :twitch.tv/tags twitch.tv/commands")
-            await self.websocket.send("PASS SCHMOOPIIE")  # Anonymous login
-            await self.websocket.send("NICK justinfan12345")  # Anonymous username
-            await self.websocket.send(f"JOIN #{self.channel}")
-            
-            logger.info(f"Connected to chat for channel: {self.channel}")
-            
-        except Exception as e:
-            logger.error(f"Failed to connect to chat: {e}")
-            self.is_connected = False
-            raise
-    
-    async def disconnect(self):
-        """Disconnect from chat"""
-        self.is_monitoring = False
-        if self.websocket:
-            await self.websocket.close()
-        self.is_connected = False
-        logger.info(f"Disconnected from chat for channel: {self.channel}")
-    
-    async def start_monitoring(self, duration_minutes: Optional[int] = None):
-        """Start monitoring chat messages"""
-        if not self.is_connected:
-            await self.connect()
-        
+
+        # Compile regex patterns for efficiency
+        self.compiled_patterns = {
+            re.compile(pattern, re.IGNORECASE): weight
+            for pattern, weight in self.excitement_patterns.items()
+        }
+
+    async def event_ready(self):
+        """Called when bot is ready"""
+        logger.info(f"Chat monitor ready for channel: {self.channel_name}")
         self.is_monitoring = True
-        self.stats['start_time'] = datetime.utcnow()
-        
-        logger.info(f"Started monitoring chat for {self.channel}")
-        
-        try:
-            if duration_minutes:
-                # Monitor for specific duration
-                await asyncio.wait_for(
-                    self._message_loop(),
-                    timeout=duration_minutes * 60
-                )
-            else:
-                # Monitor indefinitely
-                await self._message_loop()
-                
-        except asyncio.TimeoutError:
-            logger.info(f"Chat monitoring completed after {duration_minutes} minutes")
-        except Exception as e:
-            logger.error(f"Error during chat monitoring: {e}")
-        finally:
-            self.is_monitoring = False
-    
-    async def _message_loop(self):
-        """Main message processing loop"""
-        try:
-            while self.is_monitoring and self.is_connected:
-                message = await self.websocket.recv()
-                await self._process_message(message)
-                
-        except websockets.exceptions.ConnectionClosed:
-            logger.warning("Chat connection closed")
-            self.is_connected = False
-        except Exception as e:
-            logger.error(f"Error in message loop: {e}")
-            raise
-    
-    async def _process_message(self, raw_message: str):
-        """Process incoming chat message"""
-        try:
-            # Handle PING messages
-            if raw_message.startswith('PING'):
-                await self.websocket.send('PONG :tmi.twitch.tv')
-                return
-            
-            # Parse IRC message
-            message_data = self._parse_irc_message(raw_message)
-            if not message_data:
-                return
-            
-            # Update statistics
-            self.stats['total_messages'] += 1
-            if message_data.get('username'):
-                self.stats['unique_users'].add(message_data['username'])
-            
-            # Add to message buffer
-            self.message_buffer.append({
-                'timestamp': datetime.utcnow(),
-                'username': message_data.get('username'),
-                'message': message_data.get('message', ''),
-                'badges': message_data.get('badges', {}),
-                'emotes': message_data.get('emotes', {}),
-                'user_type': message_data.get('user_type', '')
-            })
-            
-            # Keep buffer size manageable
-            if len(self.message_buffer) > 1000:
-                self.message_buffer = self.message_buffer[-800:]  # Keep last 800 messages
-            
-            # Analyze for excitement
-            await self._analyze_excitement(message_data)
-            
-            # Call external callback if provided
-            if self.on_message_callback:
-                await self.on_message_callback(message_data)
-                
-        except Exception as e:
-            logger.error(f"Error processing message: {e}")
-    
-    def _parse_irc_message(self, raw_message: str) -> Optional[Dict[str, Any]]:
-        """Parse IRC message format"""
-        try:
-            # Skip non-PRIVMSG messages
-            if 'PRIVMSG' not in raw_message:
-                return None
-            
-            parts = raw_message.split(' ')
-            
-            # Extract tags (if present)
-            tags = {}
-            if raw_message.startswith('@'):
-                tag_part = parts[0][1:]  # Remove @
-                for tag in tag_part.split(';'):
-                    if '=' in tag:
-                        key, value = tag.split('=', 1)
-                        tags[key] = value
-            
-            # Extract username and message
-            username = None
-            message = ""
-            
-            for i, part in enumerate(parts):
-                if part.startswith(':') and '!' in part:
-                    username = part[1:].split('!')[0]
-                elif part == 'PRIVMSG':
-                    # Message starts after PRIVMSG #channel
-                    if i + 2 < len(parts):
-                        message_parts = parts[i + 2:]
-                        message = ' '.join(message_parts)
-                        if message.startswith(':'):
-                            message = message[1:]
-                    break
-            
-            if not username or not message:
-                return None
-            
-            # Parse useful tags
-            badges = {}
-            if 'badges' in tags and tags['badges']:
-                for badge in tags['badges'].split(','):
-                    if '/' in badge:
-                        badge_name, badge_level = badge.split('/', 1)
-                        badges[badge_name] = badge_level
-            
-            emotes = {}
-            if 'emotes' in tags and tags['emotes']:
-                # Parse emote positions (simplified)
-                emotes = {'raw': tags['emotes']}
-            
-            return {
-                'username': username,
-                'message': message,
-                'badges': badges,
-                'emotes': emotes,
-                'user_type': tags.get('user-type', ''),
-                'color': tags.get('color', ''),
-                'display_name': tags.get('display-name', username),
-                'user_id': tags.get('user-id', ''),
-                'timestamp': datetime.utcnow()
+
+    async def event_message(self, message):
+        """Process incoming chat messages"""
+        if not self.is_monitoring:
+            return
+
+        # Skip bot messages
+        if message.echo:
+            return
+
+        # Update basic stats
+        self.stats.total_messages += 1
+        self.stats.unique_users.add(message.author.name)
+
+        # Add to recent messages
+        message_data = {
+            "timestamp": datetime.utcnow(),
+            "author": message.author.name,
+            "content": message.content,
+            "excitement_score": 0,
+        }
+
+        # Calculate excitement score for this message
+        excitement_score = self._calculate_message_excitement(message.content)
+        message_data["excitement_score"] = excitement_score
+
+        # Add to recent messages queue
+        self.stats.recent_messages.append(message_data)
+
+        # Update messages per minute counter
+        current_minute = datetime.utcnow().replace(second=0, microsecond=0)
+        if (
+            not self.stats.messages_per_minute
+            or self.stats.messages_per_minute[-1][0] != current_minute
+        ):
+            self.stats.messages_per_minute.append([current_minute, 1])
+        else:
+            self.stats.messages_per_minute[-1][1] += 1
+
+        # Check for excitement peaks
+        await self._check_excitement_peak()
+
+    def _calculate_message_excitement(self, content: str) -> float:
+        """Calculate excitement score for a message"""
+        score = 0.0
+
+        # Check against excitement patterns
+        for pattern, weight in self.compiled_patterns.items():
+            matches = pattern.findall(content)
+            if matches:
+                score += weight * len(matches)
+
+        # Additional scoring factors
+
+        # Message length (very short or very long can indicate excitement)
+        if len(content) < 5 or len(content) > 100:
+            score += 0.5
+
+        # Emote density
+        emote_count = len(re.findall(r":\w+:", content))
+        if emote_count > 0:
+            score += emote_count * 0.5
+
+        # Caps ratio
+        if len(content) > 3:
+            caps_ratio = sum(1 for c in content if c.isupper()) / len(content)
+            if caps_ratio > 0.5:
+                score += caps_ratio * 2
+
+        return min(score, 10.0)  # Cap at 10
+
+    async def _check_excitement_peak(self):
+        """Check if current chat activity indicates an excitement peak"""
+        now = datetime.utcnow()
+
+        # Look at last 30 seconds of messages
+        recent_window = now - timedelta(seconds=30)
+        recent_messages = [
+            msg
+            for msg in self.stats.recent_messages
+            if msg["timestamp"] > recent_window
+        ]
+
+        if len(recent_messages) < 5:  # Need minimum activity
+            return
+
+        # Calculate window statistics
+        total_score = sum(msg["excitement_score"] for msg in recent_messages)
+        avg_score = total_score / len(recent_messages)
+        unique_users = len(set(msg["author"] for msg in recent_messages))
+        message_rate = len(recent_messages) / 30  # messages per second
+
+        # Determine if this is an excitement peak
+        excitement_threshold = 3.0
+        rate_threshold = 0.5  # messages per second
+
+        if avg_score > excitement_threshold and message_rate > rate_threshold:
+            # Extract indicators that triggered this peak
+            indicators = []
+            sample_messages = []
+
+            for msg in recent_messages[-5:]:  # Last 5 messages as samples
+                sample_messages.append(f"{msg['author']}: {msg['content']}")
+
+                # Find which patterns matched
+                for pattern, weight in self.compiled_patterns.items():
+                    if pattern.search(msg["content"]):
+                        pattern_name = list(self.excitement_patterns.keys())[
+                            list(self.compiled_patterns.keys()).index(pattern)
+                        ]
+                        if pattern_name not in indicators:
+                            indicators.append(pattern_name)
+
+            # Create excitement moment
+            moment = ExcitementMoment(
+                timestamp=now,
+                score=avg_score,
+                duration=30,
+                message_count=len(recent_messages),
+                unique_users=unique_users,
+                indicators=indicators,
+                sample_messages=sample_messages,
+            )
+
+            self.excitement_moments.append(moment)
+
+            logger.info(
+                f"Excitement peak detected: score={avg_score:.2f}, "
+                f"messages={len(recent_messages)}, users={unique_users}"
+            )
+
+    def get_recent_stats(self) -> Dict[str, Any]:
+        """Get recent chat statistics"""
+        now = datetime.utcnow()
+
+        # Messages in last minute
+        last_minute = now - timedelta(minutes=1)
+        recent_messages = [
+            msg
+            for msg in self.stats.recent_messages
+            if msg["timestamp"] > last_minute
+        ]
+
+        return {
+            "total_messages": self.stats.total_messages,
+            "unique_users": list(self.stats.unique_users),
+            "recent_message_count": len(recent_messages),
+            "recent_unique_users": len(
+                set(msg["author"] for msg in recent_messages)
+            ),
+            "average_excitement": sum(msg["excitement_score"] for msg in recent_messages)
+            / max(len(recent_messages), 1),
+            "excitement_moments": len(self.excitement_moments),
+            "monitoring_duration": (now - self.stats.start_time).total_seconds(),
+        }
+
+    def get_excitement_moments(self) -> List[Dict[str, Any]]:
+        """Get all detected excitement moments"""
+        return [
+            {
+                "timestamp": moment.timestamp.isoformat(),
+                "score": moment.score,
+                "duration": moment.duration,
+                "message_count": moment.message_count,
+                "unique_users": moment.unique_users,
+                "indicators": moment.indicators,
+                "sample_messages": moment.sample_messages,
             }
-            
-        except Exception as e:
-            logger.error(f"Error parsing IRC message: {e}")
-            return None
-    
-    async def _analyze_excitement(self, message_data: Dict[str, Any]):
-        """Analyze message for excitement indicators"""
-        message_text = message_data.get('message', '').lower()
-        
-        excitement_score = 0
-        indicators = []
-        
-        # Check for excitement keywords
-        for keyword in self.excitement_keywords:
-            if keyword in message_text:
-                excitement_score += 1
-                indicators.append(f"keyword:{keyword}")
-        
-        # Check for caps (excitement indicator)
-        if message_text.isupper() and len(message_text) > 3:
-            excitement_score += 1
-            indicators.append("caps")
-        
-        # Check for multiple exclamation marks
-        exclamation_count = message_text.count('!')
-        if exclamation_count >= 3:
-            excitement_score += exclamation_count // 3
-            indicators.append(f"exclamations:{exclamation_count}")
-        
-        # Check for emotes (basic detection)
-        if message_data.get('emotes', {}).get('raw'):
-            excitement_score += 1
-            indicators.append("emotes")
-        
-        # Check for subscriber/VIP status (their messages might be more significant)
-        badges = message_data.get('badges', {})
-        if 'subscriber' in badges or 'vip' in badges or 'moderator' in badges:
-            excitement_score *= 1.5
-            indicators.append("special_user")
-        
-        # Record excitement moments
-        if excitement_score >= 2:  # Threshold for excitement
-            self.stats['excitement_moments'].append({
-                'timestamp': datetime.utcnow(),
-                'username': message_data.get('username'),
-                'message': message_data.get('message'),
-                'score': excitement_score,
-                'indicators': indicators
-            })
-    
-    def get_recent_excitement_windows(self, window_seconds: int = 30, min_score: float = 5.0) -> List[Dict[str, Any]]:
+            for moment in self.excitement_moments
+        ]
+
+    def get_recent_excitement_windows(
+        self, window_seconds: int = 30, min_score: float = 5.0
+    ) -> List[Dict[str, Any]]:
         """Get time windows with high excitement levels"""
         now = datetime.utcnow()
         cutoff_time = now - timedelta(minutes=5)  # Look at last 5 minutes
-        
+
         # Group excitement moments by time windows
         windows = {}
-        for moment in self.stats['excitement_moments']:
-            if moment['timestamp'] < cutoff_time:
+        for moment in self.excitement_moments:
+            if moment.timestamp < cutoff_time:
                 continue
-            
-            # Calculate window start
-            seconds_since_start = (moment['timestamp'] - self.stats['start_time']).total_seconds()
-            window_start = int(seconds_since_start // window_seconds) * window_seconds
-            
+
+            # Round timestamp to window
+            window_start = moment.timestamp.replace(
+                second=(moment.timestamp.second // window_seconds) * window_seconds,
+                microsecond=0,
+            )
+
             if window_start not in windows:
                 windows[window_start] = {
-                    'start_time': window_start,
-                    'end_time': window_start + window_seconds,
-                    'moments': [],
-                    'total_score': 0,
-                    'unique_users': set()
+                    "start_time": window_start,
+                    "end_time": window_start + timedelta(seconds=window_seconds),
+                    "moments": [],
+                    "total_score": 0,
+                    "max_score": 0,
+                    "indicators": set(),
                 }
-            
-            windows[window_start]['moments'].append(moment)
-            windows[window_start]['total_score'] += moment['score']
-            windows[window_start]['unique_users'].add(moment['username'])
-        
-        # Filter windows by minimum score
-        exciting_windows = []
+
+            windows[window_start]["moments"].append(moment)
+            windows[window_start]["total_score"] += moment.score
+            windows[window_start]["max_score"] = max(
+                windows[window_start]["max_score"], moment.score
+            )
+            windows[window_start]["indicators"].update(moment.indicators)
+
+        # Filter and format windows
+        result_windows = []
         for window_data in windows.values():
-            if window_data['total_score'] >= min_score:
-                window_data['unique_users'] = len(window_data['unique_users'])
-                exciting_windows.append(window_data)
-        
-        # Sort by score descending
-        exciting_windows.sort(key=lambda x: x['total_score'], reverse=True)
-        
-        return exciting_windows
-    
-    def get_statistics(self) -> Dict[str, Any]:
-        """Get chat monitoring statistics"""
-        runtime = None
-        message_rate = 0
-        
-        if self.stats['start_time']:
-            runtime = (datetime.utcnow() - self.stats['start_time']).total_seconds()
-            if runtime > 0:
-                message_rate = self.stats['total_messages'] / (runtime / 60)  # messages per minute
-        
-        return {
-            'channel': self.channel,
-            'runtime_seconds': runtime,
-            'total_messages': self.stats['total_messages'],
-            'unique_users': len(self.stats['unique_users']),
-            'excitement_moments': len(self.stats['excitement_moments']),
-            'message_rate_per_minute': round(message_rate, 2),
-            'is_monitoring': self.is_monitoring,
-            'is_connected': self.is_connected,
-            'recent_excitement_windows': self.get_recent_excitement_windows()
-        }
-    
-    async def get_highlight_suggestions(self) -> List[Dict[str, Any]]:
-        """Get highlight suggestions based on chat analysis"""
-        exciting_windows = self.get_recent_excitement_windows()
-        
-        suggestions = []
-        for window in exciting_windows[:10]:  # Top 10 windows
-            # Calculate confidence based on score and user participation
-            base_confidence = min(window['total_score'] / 20, 1.0)  # Normalize to 0-1
-            user_boost = min(window['unique_users'] / 10, 0.3)  # Up to 30% boost for user participation
-            confidence = min(base_confidence + user_boost, 1.0)
-            
-            if confidence >= 0.6:  # Minimum confidence threshold
-                suggestions.append({
-                    'start_time': window['start_time'],
-                    'end_time': window['end_time'],
-                    'confidence': confidence,
-                    'type': 'CHAT_SPIKE',
-                    'description': f"Chat excitement detected ({window['total_score']} score, {window['unique_users']} users)",
-                    'metadata': {
-                        'excitement_score': window['total_score'],
-                        'unique_users': window['unique_users'],
-                        'message_count': len(window['moments']),
-                        'top_messages': [m['message'] for m in window['moments'][:3]]
+            avg_score = window_data["total_score"] / len(window_data["moments"])
+
+            if avg_score >= min_score:
+                result_windows.append(
+                    {
+                        "start_time": window_data["start_time"].isoformat(),
+                        "end_time": window_data["end_time"].isoformat(),
+                        "duration": window_seconds,
+                        "score": avg_score,
+                        "max_score": window_data["max_score"],
+                        "moment_count": len(window_data["moments"]),
+                        "indicators": list(window_data["indicators"]),
                     }
-                })
-        
-        return suggestions
+                )
+
+        # Sort by score descending
+        result_windows.sort(key=lambda x: x["score"], reverse=True)
+
+        return result_windows
+
+    def get_top_chatters(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get most active chatters"""
+        user_message_counts = defaultdict(int)
+        user_excitement_scores = defaultdict(float)
+
+        for msg in self.stats.recent_messages:
+            user = msg["author"]
+            user_message_counts[user] += 1
+            user_excitement_scores[user] += msg["excitement_score"]
+
+        # Calculate average excitement per user
+        top_chatters = []
+        for user in user_message_counts:
+            avg_excitement = user_excitement_scores[user] / user_message_counts[user]
+            top_chatters.append(
+                {
+                    "username": user,
+                    "message_count": user_message_counts[user],
+                    "total_excitement": user_excitement_scores[user],
+                    "avg_excitement": avg_excitement,
+                }
+            )
+
+        # Sort by total excitement
+        top_chatters.sort(key=lambda x: x["total_excitement"], reverse=True)
+
+        return top_chatters[:limit]
+
+    async def stop_monitoring(self):
+        """Stop chat monitoring"""
+        self.is_monitoring = False
+        await self.close()
+
+        logger.info(f"Chat monitoring stopped for {self.channel_name}")
+        logger.info(f"Total messages: {self.stats.total_messages}")
+        logger.info(f"Unique users: {len(self.stats.unique_users)}")
+        logger.info(f"Excitement moments: {len(self.excitement_moments)}")
+
+
+class ChatMonitorManager:
+    """Manages multiple chat monitors"""
+
+    def __init__(self):
+        self.monitors: Dict[str, TwitchChatMonitor] = {}
+        self.monitor_tasks: Dict[str, asyncio.Task] = {}
+
+    async def start_monitor(
+        self, channel_name: str, oauth_token: str
+    ) -> TwitchChatMonitor:
+        """Start monitoring a channel"""
+        if channel_name in self.monitors:
+            logger.warning(f"Monitor already exists for {channel_name}")
+            return self.monitors[channel_name]
+
+        monitor = TwitchChatMonitor(channel_name, oauth_token)
+        self.monitors[channel_name] = monitor
+
+        # Start the monitor in a background task
+        task = asyncio.create_task(monitor.start())
+        self.monitor_tasks[channel_name] = task
+
+        logger.info(f"Started chat monitor for {channel_name}")
+        return monitor
+
+    async def stop_monitor(self, channel_name: str):
+        """Stop monitoring a channel"""
+        if channel_name not in self.monitors:
+            logger.warning(f"No monitor found for {channel_name}")
+            return
+
+        monitor = self.monitors[channel_name]
+        await monitor.stop_monitoring()
+
+        # Cancel the background task
+        if channel_name in self.monitor_tasks:
+            task = self.monitor_tasks[channel_name]
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            del self.monitor_tasks[channel_name]
+
+        del self.monitors[channel_name]
+        logger.info(f"Stopped chat monitor for {channel_name}")
+
+    def get_monitor(self, channel_name: str) -> Optional[TwitchChatMonitor]:
+        """Get monitor for a channel"""
+        return self.monitors.get(channel_name)
+
+    async def stop_all_monitors(self):
+        """Stop all active monitors"""
+        for channel_name in list(self.monitors.keys()):
+            await self.stop_monitor(channel_name)
+
+
+# Global monitor manager instance
+chat_monitor_manager = ChatMonitorManager()
