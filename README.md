@@ -695,6 +695,15 @@ We welcome contributions from the community! Here's how you can help make ClipMa
 - **📋 Commit Messages** - Use conventional commit format
 - **🔍 Code Review** - All PRs require review
 
+### 🧪 Running Tests
+
+Install the backend requirements and run `pytest` from the project root:
+
+```bash
+pip install -r backend/requirements.txt  # or install your dev environment
+pytest
+```
+
 ### 🐛 Bug Reports
 
 Found a bug? Please create an issue with:
