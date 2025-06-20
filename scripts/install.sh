@@ -85,18 +85,26 @@ check_requirements() {
 
 # Get user's home directory dynamically
 get_user_home() {
-    if [ -n "$HOME" ]; then
-        USER_HOME="$HOME"
+    if [ -n "$CLIPMASTER_HOME" ]; then
+        CLIPMASTER_DIR="$CLIPMASTER_HOME"
+    elif [ -n "$CLIPMASTER_DIR" ]; then
+        CLIPMASTER_DIR="$CLIPMASTER_DIR"
     else
-        USER_HOME=$(getent passwd "$USER" | cut -d: -f6)
+        if [ -n "$HOME" ]; then
+            USER_HOME="$HOME"
+        else
+            USER_HOME=$(getent passwd "$USER" | cut -d: -f6)
+        fi
+
+        if [ -z "$USER_HOME" ] || [ ! -d "$USER_HOME" ]; then
+            echo "❌ Could not determine user home directory"
+            exit 1
+        fi
+
+        CLIPMASTER_DIR="$USER_HOME/clipmaster"
     fi
-    
-    if [ -z "$USER_HOME" ] || [ ! -d "$USER_HOME" ]; then
-        echo "❌ Could not determine user home directory"
-        exit 1
-    fi
-    
-    CLIPMASTER_DIR="$USER_HOME/clipmaster"
+
+    USER_HOME="${USER_HOME:-$(dirname "$CLIPMASTER_DIR")}" 
     echo "📁 ClipMaster will be installed to: $CLIPMASTER_DIR"
 }
 
