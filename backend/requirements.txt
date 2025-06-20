@@ -39,7 +39,6 @@ aiofiles>=23.2.1
 python-magic>=0.4.27
 
 # Authentication - Updated for security
-python-jose[cryptography]>=3.3.0  # Need to replace due to CVE-2024-33664
 passlib[bcrypt]>=1.7.4
 python-dotenv>=1.0.0
 
