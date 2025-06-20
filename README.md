@@ -311,6 +311,19 @@ curl -X POST http://localhost:8000/api/v1/twitch/{integration_id}/monitor \
   -d '{"streamer": "your_favorite_streamer"}'
 ```
 
+#### Custom Prompts
+```bash
+# Create a prompt
+curl -X POST http://localhost:8000/api/v1/prompts?user_id=123 \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Prompt","prompt":"Find highlights","category":"GENERAL"}'
+
+# Increment prompt usage
+curl -X POST http://localhost:8000/api/v1/prompts/{prompt_id}/use?user_id=123 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
 ### 🖥️ Command Line Tools
 
 ```bash
