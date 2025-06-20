@@ -6,13 +6,16 @@
 
 set -e
 
+# Determine installation directory
+CLIPMASTER_HOME="${CLIPMASTER_HOME:-${CLIPMASTER_DIR:-$HOME/clipmaster}}"
+
 echo "⚙️  ClipMaster Environment Setup"
 echo "==============================="
 
 # Check if .env file exists
-if [ -f "/home/ubuntu/clipmaster/.env" ]; then
+if [ -f "$CLIPMASTER_HOME/.env" ]; then
     echo "⚠️  .env file already exists. Creating backup..."
-    cp /home/ubuntu/clipmaster/.env /home/ubuntu/clipmaster/.env.backup.$(date +%s)
+    cp "$CLIPMASTER_HOME/.env" "$CLIPMASTER_HOME/.env.backup.$(date +%s)"
 fi
 
 # Generate secure secret key
@@ -35,7 +38,7 @@ else
 fi
 
 # Create comprehensive .env file
-cat > /home/ubuntu/clipmaster/.env << EOF
+cat > "$CLIPMASTER_HOME/.env" << EOF
 # ===========================================
 # ClipMaster Configuration
 # ===========================================
@@ -104,10 +107,10 @@ HF_HOME=/app/models
 TRANSFORMERS_CACHE=/app/models
 EOF
 
-echo "✅ Environment file created: /home/ubuntu/clipmaster/.env"
+echo "✅ Environment file created: $CLIPMASTER_HOME/.env"
 
 # Create production environment file
-cat > /home/ubuntu/clipmaster/.env.production << EOF
+cat > "$CLIPMASTER_HOME/.env.production" << EOF
 # Production Environment Configuration
 # Copy this to .env.production when deploying
 
@@ -135,20 +138,22 @@ CELERY_BROKER_URL=redis://your-redis-host:6379/0
 CELERY_RESULT_BACKEND=redis://your-redis-host:6379/0
 EOF
 
-echo "✅ Production environment template created: /home/ubuntu/clipmaster/.env.production"
+echo "✅ Production environment template created: $CLIPMASTER_HOME/.env.production"
 
 # Set appropriate permissions
-chmod 600 /home/ubuntu/clipmaster/.env
-chmod 600 /home/ubuntu/clipmaster/.env.production
+chmod 600 "$CLIPMASTER_HOME/.env"
+chmod 600 "$CLIPMASTER_HOME/.env.production"
 
 # Create configuration validation script
-cat > /home/ubuntu/clipmaster/scripts/validate-config.sh << 'EOF'
+cat > "$CLIPMASTER_HOME/scripts/validate-config.sh" << 'EOF'
 #!/bin/bash
+
+CLIPMASTER_HOME="${CLIPMASTER_HOME:-${CLIPMASTER_DIR:-$HOME/clipmaster}}"
 
 echo "🔍 Validating ClipMaster Configuration"
 echo "====================================="
 
-cd /home/ubuntu/clipmaster
+cd "$CLIPMASTER_HOME"
 
 # Source environment
 if [ -f .env ]; then
@@ -215,7 +220,7 @@ fi
 
 # Check disk space
 echo "💾 Checking disk space..."
-AVAILABLE=$(df /home/ubuntu/clipmaster/storage | tail -1 | awk '{print $4}')
+AVAILABLE=$(df "$CLIPMASTER_HOME/storage" | tail -1 | awk '{print $4}')
 AVAILABLE_GB=$((AVAILABLE / 1024 / 1024))
 
 if [ $AVAILABLE_GB -lt 10 ]; then
@@ -228,7 +233,7 @@ echo ""
 echo "🎉 Configuration validation completed"
 EOF
 
-chmod +x /home/ubuntu/clipmaster/scripts/validate-config.sh
+chmod +x "$CLIPMASTER_HOME/scripts/validate-config.sh"
 
 echo ""
 echo "📋 Next steps:"
