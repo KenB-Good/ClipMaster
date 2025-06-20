@@ -231,6 +231,20 @@ install_dependencies() {
     echo "✅ System dependencies installed"
 }
 
+# Install Python packages
+install_python_requirements() {
+    echo "🐍 Installing Python dependencies..."
+
+    # Retry installation to handle transient network issues
+    if ! pip install -r backend/requirements.txt --retries 3 --timeout 60; then
+        echo "❌ Failed to install Python requirements"
+        echo "   Please check your network connection or missing build tools for wheels"
+        exit 1
+    fi
+
+    echo "✅ Python dependencies installed"
+}
+
 # Create directory structure
 create_directories() {
     echo "📁 Creating directory structure..."
@@ -490,9 +504,10 @@ main() {
     install_docker_compose
     install_nvidia_docker
     install_dependencies
-    
+
     create_directories
     setup_environment
+    install_python_requirements
     setup_systemd_service
     install_utilities
     setup_aliases
