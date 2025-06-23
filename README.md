@@ -703,7 +703,8 @@ We welcome contributions from the community! Here's how you can help make ClipMa
 
 ### 🧪 Running Tests
 
-Install the backend requirements and run `pytest` from the project root:
+Install the backend requirements and run `pytest` from the project root.  The
+tests use mocked services, so no PostgreSQL or Redis instances are required:
 
 ```bash
 pip install -r backend/requirements.txt  # or install your dev environment
