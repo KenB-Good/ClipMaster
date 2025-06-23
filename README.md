@@ -172,9 +172,12 @@ AUTO_CLEANUP_DAYS=30                  # Days before cleanup eligibility
 MAX_FILE_SIZE=5368709120              # 5GB max upload size
 
 # 🔒 Security
-SECRET_KEY=your-super-secret-key      # Generate a strong secret key
+SECRET_KEY=your-super-secret-key      # Generate a strong secret key (required)
+# The backend will fail to start if this variable is not set
 DATABASE_URL=postgresql://clipmaster:password@postgres:5432/clipmaster
 ```
+
+Be sure to set a secure value for `SECRET_KEY`; if it is missing the backend will raise an error during startup.
 
 #### 4. 🎮 Twitch API Setup
 
