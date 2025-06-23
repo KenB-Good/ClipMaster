@@ -88,6 +88,9 @@
 git clone https://github.com/KenB-Good/ClipMaster.git
 cd ClipMaster
 
+# Install front-end dependencies
+(cd app && npm install) # or use `yarn install`
+
 # 🔧 Run automated installation
 chmod +x scripts/install.sh
 ./scripts/install.sh
