@@ -5,7 +5,7 @@ Configuration settings for ClipMaster backend
 import os
 from typing import List
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, ValidationError
 
 class Settings(BaseSettings):
     """Application settings"""
@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     AUTO_CLEANUP_THRESHOLD: float = Field(default=0.8)  # 80% storage threshold
     
     # Security
-    SECRET_KEY: str = Field(default="clipmaster-secret-key-please-change-in-production")
+    SECRET_KEY: str = Field(..., description="Secret key for JWT signing")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60 * 24 * 8)  # 8 days
     
     # Logging
@@ -62,7 +62,12 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 # Create settings instance
-settings = Settings()
+try:
+    settings = Settings()
+except ValidationError as exc:
+    if any(err.get("loc") == ("SECRET_KEY",) for err in exc.errors()):
+        raise ValueError("SECRET_KEY environment variable is required") from exc
+    raise
 
 # Ensure directories exist
 for directory in [settings.UPLOAD_DIR, settings.CLIPS_DIR, settings.TEMP_DIR]:
